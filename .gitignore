@@ -1,0 +1,16 @@
+# Ignore macOS system files
+.DS_Store
+.Trash/
+.CFUserTextEncoding
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VSCode settings
+.vscode/
+
+# Other common files
+*.log
+*.trk
+*.zip
