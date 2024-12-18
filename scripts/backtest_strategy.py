@@ -31,14 +31,31 @@ def backtest_strategy(df, z_entry=2, z_exit=0.5):
 
     # Calculate strategy returns
     df['Strategy_Return'] = df['Position'].shift(1) * df['Spread'].pct_change()
-
+    df['Cumulative_Return'] = (1 + df['Strategy_Return']).cumprod() - 1
     return df
+
+def calculate_performance_metrics(df):
+    """
+    Calculate performance metrics for the strategy.
+    """
+    cumulative_return = df['Cumulative_Return'].iloc[-1]
+    annualized_return = df['Strategy_Return'].mean() * 252
+    annualized_volatility = df['Strategy_Return'].std() * np.sqrt(252)
+    sharpe_ratio = annualized_return / annualized_volatility
+    max_drawdown = (df['Cumulative_Return'].cummax() - df['Cumulative_Return']).max()
+
+    print("Performance Metrics:")
+    print(f"Cumulative Return: {cumulative_return:.2%}")
+    print(f"Annualized Return: {annualized_return:.2%}")
+    print(f"Annualized Volatility: {annualized_volatility:.2%}")
+    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    print(f"Max Drawdown: {max_drawdown:.2%}")
 
 def plot_results(df):
     """
     Plot the Spread and Z-Score with signals.
     """
-    fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10))  # 3 rows, 1 column
 
     # Plot the Spread
     axes[0].plot(df.index, df['Spread'], label='Spread', color='blue')
@@ -56,6 +73,16 @@ def plot_results(df):
     axes[1].set_title("Z-Score of Spread")
     axes[1].legend()
 
+    # Plot Cumulative Returns
+    if 'Cumulative_Return' in df.columns:
+        axes[2].plot(df.index, df['Cumulative_Return'], label='Cumulative Return', color='purple')
+    else:
+        print("Warning: 'Cumulative_Return' column is missing.")
+
+    axes[2].plot(df.index, df['Cumulative_Return'], label='Cumulative Return', color='purple')
+    axes[2].set_title("Cumulative Returns of Mean Reversion Strategy")
+    axes[2].legend()
+
     plt.tight_layout()
     plt.show()
 
@@ -70,5 +97,10 @@ if __name__ == "__main__":
     # Backtest strategy
     df = backtest_strategy(df, z_entry=2, z_exit=0.5)
 
+    # Calculate performance metrics
+    calculate_performance_metrics(df)
+
     # Plot the results
     plot_results(df)
+
+
