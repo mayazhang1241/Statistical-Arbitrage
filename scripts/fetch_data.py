@@ -2,8 +2,9 @@ import yfinance as yf
 import os
 import glob
 import sys
+import datetime
 
-def fetch_stock_data(ticker_a, ticker_b, start_date, end_date, save_dir="data"):
+def fetch_stock_data(ticker_a, ticker_b, save_dir="data"):
     print("DEBUG: This is the correct fetch_data.py!")
 
     # Fetch stocks from Yahoo Finance
@@ -19,6 +20,12 @@ def fetch_stock_data(ticker_a, ticker_b, start_date, end_date, save_dir="data"):
     for file in glob.glob(os.path.join(save_dir, "*.csv")):
         os.remove(file)
         print(f"Deleted old file: {file}")
+
+    # Dynamically calculate the date range for the past 3 years
+    end_date = datetime.datetime.today().strftime('%Y-%m-%d')  # Today's date
+    start_date = (datetime.datetime.today() - datetime.timedelta(days=3*365)).strftime('%Y-%m-%d')  # Past 3 years
+
+    print(f"Fetching data from {start_date} to {end_date}")
 
     # Fetch stock data
     stock_a = yf.download(ticker_a, start=start_date, end=end_date)
@@ -44,4 +51,4 @@ def fetch_stock_data(ticker_a, ticker_b, start_date, end_date, save_dir="data"):
     print(f"Data saved for {ticker_a} and {ticker_b} in {save_dir}")
 
 if __name__ == "__main__":
-    fetch_stock_data("GC=F", "SI=F", "2020-01-01", "2023-01-01")
+    fetch_stock_data("GC=F", "SI=F")
