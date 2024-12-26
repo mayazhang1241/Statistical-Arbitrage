@@ -7,6 +7,8 @@ def calculate_spread(df, scaling_factor=1):
     Calculate the spread between Gold and Silver prices.
     """
     df['Spread'] = df['Price_gold'] - scaling_factor * df['Price_silver']
+    print("Inside calculate_spread:")
+    print(df.head())
     return df
 
 def calculate_zscore(df, window=30):
@@ -17,7 +19,7 @@ def calculate_zscore(df, window=30):
     df['Spread_Std'] = df['Spread'].rolling(window=window).std()
     df['Z_Score'] = (df['Spread'] - df['Spread_Mean']) / df['Spread_Std']
     return df
-
+    
 def backtest_strategy(df, z_entry=2, z_exit=0.5):
     """
     Backtest the mean reversion strategy based on Z-score thresholds.
@@ -51,6 +53,7 @@ def calculate_performance_metrics(df):
     print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
     print(f"Max Drawdown: {max_drawdown:.2%}")
 
+'''
 def plot_results(df):
     """
     Plot the Spread and Z-Score with signals.
@@ -85,6 +88,7 @@ def plot_results(df):
 
     plt.tight_layout()
     plt.show()
+'''
 
 if __name__ == "__main__":
     # Load the cleaned and combined data
@@ -100,7 +104,8 @@ if __name__ == "__main__":
     # Calculate performance metrics
     calculate_performance_metrics(df)
 
+'''
     # Plot the results
     plot_results(df)
-
+'''
 

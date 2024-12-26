@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-def load_and_clean_data(file_path):
+def clean_data(file_path):
     """
     Load the data from a CSV file, clean it, and return the cleaned dataframe.
     """
@@ -39,8 +39,8 @@ def analyze_data():
     """
 
     # Load and clean data
-    gold_data = load_and_clean_data("data/GC.csv")
-    silver_data = load_and_clean_data("data/SI.csv")
+    gold_data = clean_data("data/GC.csv")
+    silver_data = clean_data("data/SI.csv")
 
     # Combine the two datasets based on Date
     combined_data = gold_data.join(silver_data, how='inner', lsuffix="_gold", rsuffix="_silver")
@@ -62,20 +62,20 @@ def analyze_data():
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # Primary y-axis (Gold Price)
-    ax1.plot(combined_data.index, combined_data['Price_gold'], label='Gold Price (GC)', color='tab:blue')
-    ax1.set_xlabel("Date")
+    ax1.plot(combined_data.index, combined_data['Price_gold'], label='Gold Price (GC)', color='#D6A615')
+    #ax1.set_xlabel("Date")
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # Format as Year-Month
     ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))  # Show every 6 months
     plt.xticks(rotation=45)  # Rotate dates for better readability
 
-    ax1.set_ylabel("Gold Price", color='tab:blue')
-    ax1.tick_params(axis='y', labelcolor='tab:blue')
+    ax1.set_ylabel("Gold Price")
+    ax1.tick_params(axis='y')
 
     # Secondary y-axis (Silver Price)
     ax2 = ax1.twinx()  # Create a secondary y-axis
-    ax2.plot(combined_data.index, combined_data['Price_silver'], label='Silver Price (SI)', color='tab:orange')
-    ax2.set_ylabel("Silver Price", color='tab:orange')
-    ax2.tick_params(axis='y', labelcolor='tab:orange')
+    ax2.plot(combined_data.index, combined_data['Price_silver'], label='Silver Price (SI)', color='#C0C0C0')
+    ax2.set_ylabel("Silver Price")
+    ax2.tick_params(axis='y')
 
     # Title and legend
     fig.suptitle("Gold vs Silver Prices")
