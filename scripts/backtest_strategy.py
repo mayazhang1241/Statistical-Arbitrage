@@ -90,6 +90,50 @@ def plot_results(df):
     plt.show()
 '''
 
+def simulate_trades(df, gold_units=1, silver_units=1, cash=100000):
+    """
+    Simulate trades based on the trading signal.
+    """
+    # Initialize portfolio variables
+    gold_position = 0  # Units of gold held
+    silver_position = 0  # Units of silver held
+    # cash = 100000
+
+    # Track portfolio value over time
+    portfolio_values = []
+
+    for index, row in df.iterrows():
+        signal = row['Position']
+        gold_price = row['Price_gold']
+        silver_price = row['Price_silver']
+
+        # Execute trades based on the signal
+        if signal == 1:  # Long spread: Buy Gold, Sell Silver
+            cash -= gold_price * gold_units
+            cash += silver_price * silver_units
+            gold_position += gold_units
+            silver_position -= silver_units
+        elif signal == -1:  # Short spread: Sell Gold, Buy Silver
+            cash += gold_price * gold_units
+            cash -= silver_price * silver_units
+            gold_position -= gold_units
+            silver_position += silver_units
+        elif signal == 0:  # Exit position
+            cash += gold_position * gold_price  # Sell all gold
+            cash += silver_position * silver_price  # Buy back all silver
+            gold_position = 0
+            silver_position = 0
+        
+        # Calculate portfolio value
+        portfolio_value = cash + (gold_position * gold_price) + (silver_position * silver_price)
+        portfolio_values.append(portfolio_value)
+        print(f"Date: {index}, Signal: {signal}, Cash: {cash:.2f}, Gold Position: {gold_position}, Silver Position: {silver_position}, Portfolio Value: {portfolio_value:.2f}")
+    
+    # Add portfolio values to the dataframe
+    df['Portfolio_Value'] = portfolio_values
+    print(f"Final portfolio value: ${portfolio_value:.2f}")
+    return df
+
 if __name__ == "__main__":
     # Load the cleaned and combined data
     df = pd.read_csv("data/processed_data.csv", index_col="Date", parse_dates=True)
