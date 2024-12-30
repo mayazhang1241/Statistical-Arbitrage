@@ -4,14 +4,15 @@ import glob
 import sys
 import datetime
 
-def fetch_stock_data(gold_ticker, silver_ticker, save_dir="data"):
+def fetch_stock_data(ticker_a, ticker_b, save_dir="data"):
     print("DEBUG: This is the correct fetch_data.py!")
 
     # Fetch stocks from Yahoo Finance
-    print(f"Fetching stock data for {gold_ticker} and {silver_ticker}")
+    print("Fetching stock data for commodities...")
+    print(f"Tickers being used: {ticker_a}, {ticker_b}")
 
     # Stop script execution if tickers are incorrect
-    if gold_ticker != "GC=F" or silver_ticker != "SI=F":
+    if ticker_a != "GC=F" or ticker_b != "SI=F":
         print("Error: Incorrect tickers provided!")
         sys.exit(1)  # Stop script immediately
 
@@ -27,28 +28,27 @@ def fetch_stock_data(gold_ticker, silver_ticker, save_dir="data"):
     print(f"Fetching data from {start_date} to {end_date}")
 
     # Fetch stock data
-    gold_stock = yf.download(gold_ticker, start=start_date, end=end_date)
-    print(f"Fetched data for {gold_ticker}")
+    stock_a = yf.download(ticker_a, start=start_date, end=end_date)
+    print(f"Fetched data for {ticker_a}")
 
-    silver_stock = yf.download(silver_ticker, start=start_date, end=end_date)
-    print(f"Fetched data for {silver_ticker}")
+    stock_b = yf.download(ticker_b, start=start_date, end=end_date)
+    print(f"Fetched data for {ticker_b}")
 
     # Check if data was fetched
     print("Gold Data (first 5 rows):")
-    print(gold_stock.head())
+    print(stock_a.head())
     print("Silver Data (first 5 rows):")
-    print(silver_stock.head())
+    print(stock_b.head())
 
     # Save to CSV files
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         print(f"Created directory: {save_dir}")
 
-    gold_stock.to_csv(os.path.join(save_dir, f"{gold_ticker.replace('=F', '')}.csv"))
-    silver_stock.to_csv(os.path.join(save_dir, f"{silver_ticker.replace('=F', '')}.csv"))
+    stock_a.to_csv(os.path.join(save_dir, f"{ticker_a.replace('=F', '')}.csv"))
+    stock_b.to_csv(os.path.join(save_dir, f"{ticker_b.replace('=F', '')}.csv"))
 
-    print(f"Data saved for {gold_ticker} and {silver_ticker} in {save_dir}")
+    print(f"Data saved for {ticker_a} and {ticker_b} in {save_dir}")
 
 if __name__ == "__main__":
     fetch_stock_data("GC=F", "SI=F")
-

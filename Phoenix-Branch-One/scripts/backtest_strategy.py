@@ -1,111 +1,121 @@
 import pandas as pd
 import numpy as np
+from statsmodels.tsa.stattools import adfuller
+import yfinance as yf
 import matplotlib.pyplot as plt
+from visualizations import plot_results
 
-def calculate_spread(df, scaling_factor=1):
+def calculate_spread(df):
     """
     Calculate the spread between Gold and Silver prices.
     """
-    df['Spread'] = df['Price_gold'] - scaling_factor * df['Price_silver']
-    print("Inside calculate_spread:")
-    print(df.head())
+    df['Gold_Return'] = df['Price_gold'].pct_change()
+    df['Silver_Return'] = df['Price_silver'].pct_change()
+    df['Spread'] = df['Gold_Return'] - df['Silver_Return']
+
     return df
 
-def calculate_zscore(df, window=30):
+
+def calculate_zscore(df):
     """
     Calculate the Z-score of the spread using a rolling mean and std dev.
     """
-    df['Spread_Mean'] = df['Spread'].rolling(window=window).mean()
-    df['Spread_Std'] = df['Spread'].rolling(window=window).std()
+    df['Spread_Mean'] = df['Spread'].rolling(window=30).mean()
+    df['Spread_Std'] = df['Spread'].rolling(window=30).std()
     df['Z_Score'] = (df['Spread'] - df['Spread_Mean']) / df['Spread_Std']
-    return df
     
-def backtest_strategy(df, z_entry=2, z_exit=0.5):
+    return df
+
+
+def engle_granger_test(df):
+    """
+    Perform the Engle-Granger test to check for cointegration.
+    """
+    # Run the Augmented Dickey-Fuller test on the spread
+    result = adfuller(df['Spread'].dropna())  # Drop NaN values before testing, "result" is a tuple btw
+
+    # Extract results
+    test_statistic = result[0]
+    p_value = result[1]
+    critical_values = result[4]
+
+    print("Engle-Granger Test (ADF on Spread):")
+    print(f"Test Statistic: {test_statistic:.4f}")
+    print(f"P-Value: {p_value:.4f}")
+    print("Critical Values:")
+    for key, value in critical_values.items():
+        print(f"   {key}: {value:.4f}")
+
+    # Interpretation
+    if p_value < 0.05:
+        print("Result: The spread is stationary (cointegrated), indicating a valid pairs trading relationship.")
+    else:
+        print("Result: The spread is not stationary, indicating the pairs may not be cointegrated.")
+
+
+def backtest_strategy(df, z_entry=2.25, z_exit=0.15): #z=1.5 is ~93% and z=0.1 is ~50%
     """
     Backtest the mean reversion strategy based on Z-score thresholds.
     """
-    df['Position'] = 0  # Initialize position: 1 for Long, -1 for Short
-    
     # Generate signals based on Z-score
-    df.loc[df['Z_Score'] > z_entry, 'Position'] = -1  # Short spread
-    df.loc[df['Z_Score'] < -z_entry, 'Position'] = 1  # Long spread
-    df.loc[abs(df['Z_Score']) < z_exit, 'Position'] = 0  # Exit position
+    df.loc[df['Z_Score'] > z_entry, 'Position'] = 1 # Long spread, buy gold sell silver
+    df.loc[df['Z_Score'] < -z_entry, 'Position'] = -1 # Short spread, sell gold buy silver
+    df.loc[(df['Z_Score'] >= -z_exit) & (df['Z_Score'] <= z_exit), 'Position'] = 0
 
     # Calculate strategy returns
-    df['Strategy_Return'] = df['Position'].shift(1) * df['Spread'].pct_change()
+    df['Strategy_Return'] = df['Position'].shift(1) * df['Spread']
+    df['Growth_Factor'] = 1 + df['Strategy_Return']
+    df['Cumulative_Growth_Factor'] = df['Growth_Factor'] * df['Growth_Factor'].shift(1)
     df['Cumulative_Return'] = (1 + df['Strategy_Return']).cumprod() - 1
+
     return df
+
 
 def calculate_performance_metrics(df):
     """
     Calculate performance metrics for the strategy.
     """
     cumulative_return = df['Cumulative_Return'].iloc[-1]
-    annualized_return = df['Strategy_Return'].mean() * 252
+    days_held = df['Strategy_Return'].count()
+    annualized_return = (1 + cumulative_return) ** (252 / days_held) - 1
     annualized_volatility = df['Strategy_Return'].std() * np.sqrt(252)
-    sharpe_ratio = annualized_return / annualized_volatility
-    max_drawdown = (df['Cumulative_Return'].cummax() - df['Cumulative_Return']).max()
+    max_drawdown = (((1 + df['Strategy_Return']).cumprod() - (1 + df['Strategy_Return']).cumprod().cummax()) /
+                (1 + df['Strategy_Return']).cumprod().cummax()).min()
+
+    """
+    Get the latest 10-year US Treasury yield (risk free rate) from Yahoo Finance to calculate Sharpe.
+    """
+    ticker = "^TNX"  # Yahoo Finance ticker for 10-Year Treasury Yield
+    data = yf.download(ticker, period="1d", interval="1d")
+    # Convert yield from percentage to decimal
+    risk_free_rate = (data['Close'] / 100).values[0].item()
+    sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility
 
     print("Performance Metrics:")
-    print(f"Cumulative Return: {cumulative_return:.2%}")
-    print(f"Annualized Return: {annualized_return:.2%}")
+    print(f"Cumulative Return: {cumulative_return:.4%}")
+    print(f"Annualized Return: {annualized_return:.4%}")
     print(f"Annualized Volatility: {annualized_volatility:.2%}")
-    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
     print(f"Max Drawdown: {max_drawdown:.2%}")
+    print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
 
-'''
-def plot_results(df):
-    """
-    Plot the Spread and Z-Score with signals.
-    """
-    fig, axes = plt.subplots(3, 1, figsize=(12, 10))  # 3 rows, 1 column
-
-    # Plot the Spread
-    axes[0].plot(df.index, df['Spread'], label='Spread', color='blue')
-    axes[0].plot(df.index, df['Spread_Mean'], label='Rolling Mean', color='red', linestyle='--')
-    axes[0].fill_between(df.index, df['Spread_Mean'] + 2*df['Spread_Std'], 
-                         df['Spread_Mean'] - 2*df['Spread_Std'], color='gray', alpha=0.2)
-    axes[0].set_title("Spread Between Gold and Silver Prices")
-    axes[0].legend()
-
-    # Plot the Z-Score
-    axes[1].plot(df.index, df['Z_Score'], label='Z-Score', color='orange')
-    axes[1].axhline(2, color='red', linestyle='--', label='Z-Score = 2')
-    axes[1].axhline(-2, color='green', linestyle='--', label='Z-Score = -2')
-    axes[1].axhline(0, color='black', linestyle='-')
-    axes[1].set_title("Z-Score of Spread")
-    axes[1].legend()
-
-    # Plot Cumulative Returns
-    if 'Cumulative_Return' in df.columns:
-        axes[2].plot(df.index, df['Cumulative_Return'], label='Cumulative Return', color='purple')
-    else:
-        print("Warning: 'Cumulative_Return' column is missing.")
-
-    axes[2].plot(df.index, df['Cumulative_Return'], label='Cumulative Return', color='purple')
-    axes[2].set_title("Cumulative Returns of Mean Reversion Strategy")
-    axes[2].legend()
-
-    plt.tight_layout()
-    plt.show()
-'''
 
 if __name__ == "__main__":
     # Load the cleaned and combined data
     df = pd.read_csv("data/processed_data.csv", index_col="Date", parse_dates=True)
 
     # Calculate spread and Z-score
-    df = calculate_spread(df, scaling_factor=1)
-    df = calculate_zscore(df, window=30)
+    df = calculate_spread(df)
+    df = calculate_zscore(df)
+
+    # Perform Engle-Granger test on the spread
+    engle_granger_test(df)
 
     # Backtest strategy
-    df = backtest_strategy(df, z_entry=2, z_exit=0.5)
+    df = backtest_strategy(df, z_entry=2.25, z_exit=0.15)
 
     # Calculate performance metrics
     calculate_performance_metrics(df)
 
-'''
     # Plot the results
-    plot_results(df)
-'''
+    plot_results(df) #for visualizations.py script, that's where the function is
 
