@@ -53,14 +53,35 @@ def engle_granger_test(df):
         print("Result: The spread is not stationary, indicating the pairs may not be cointegrated.")
 
 
-def backtest_strategy(df, z_entry=2.25, z_exit=0.15): #z=1.5 is ~93% and z=0.1 is ~50%
+def backtest_strategy(df, z_entry, z_exit):
     """
     Backtest the mean reversion strategy based on Z-score thresholds.
     """
-    # Generate signals based on Z-score
-    df.loc[df['Z_Score'] > z_entry, 'Position'] = 1 # Long spread, buy gold sell silver
-    df.loc[df['Z_Score'] < -z_entry, 'Position'] = -1 # Short spread, sell gold buy silver
-    df.loc[(df['Z_Score'] >= -z_exit) & (df['Z_Score'] <= z_exit), 'Position'] = 0
+    df['Position'] = 0  # initialize position
+
+    for i in range(1, len(df)):
+        prev_position = df['Position'].iloc[i-1]
+        z_score = df['Z_Score'].iloc[i]
+        
+        if prev_position == 0:  # No position, check for new entry
+            if z_score > z_entry:
+                df['Position'].iloc[i] = -1 # Short, sell gold buy silver
+            elif z_score < -z_entry:
+                df['Position'].iloc[i] = 1 # Long, buy gold sell silver
+            else:
+                df['Position'].iloc[i] = 0
+        
+        elif prev_position == 1:  # Long position
+            if z_score < z_exit and z_score > -z_exit:  # Exit long
+                df['Position'].iloc[i] = 0
+            else:  # Maintain long
+                df['Position'].iloc[i] = 1
+        
+        elif prev_position == -1:  # Short position
+            if z_score < z_exit and z_score > -z_exit:  # Exit short
+                df['Position'].iloc[i] = 0
+            else:  # Maintain short
+                df['Position'].iloc[i] = -1
 
     # Calculate strategy returns
     df['Strategy_Return'] = df['Position'].shift(1) * df['Spread']
@@ -111,11 +132,11 @@ if __name__ == "__main__":
     engle_granger_test(df)
 
     # Backtest strategy
-    df = backtest_strategy(df, z_entry=2.25, z_exit=0.15)
+    df = backtest_strategy(df, z_entry=1.7, z_exit=0.04) #2.5
 
     # Calculate performance metrics
     calculate_performance_metrics(df)
 
     # Plot the results
-    plot_results(df) #for visualizations.py script, that's where the function is
+    plot_results(df) #the actual plot_results function is in the visualizations.py script
 
