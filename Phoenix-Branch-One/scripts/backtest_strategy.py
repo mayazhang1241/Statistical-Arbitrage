@@ -5,6 +5,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 from visualizations import plot_results
 
+
 def calculate_spread(df):
     """
     Calculate the spread between Gold and Silver prices.
@@ -100,16 +101,15 @@ def calculate_performance_metrics(df):
     days_held = df['Strategy_Return'].count()
     annualized_return = (1 + cumulative_return) ** (252 / days_held) - 1
     annualized_volatility = df['Strategy_Return'].std() * np.sqrt(252)
-    max_drawdown = (((1 + df['Strategy_Return']).cumprod() - (1 + df['Strategy_Return']).cumprod().cummax()) /
-                (1 + df['Strategy_Return']).cumprod().cummax()).min()
+    max_drawdown = ((1 + df['Strategy_Return']).cumprod() / (1 + df['Strategy_Return']).cumprod().cummax() - 1).min()
+
 
     """
     Get the latest 10-year US Treasury yield (risk free rate) from Yahoo Finance to calculate Sharpe.
     """
     ticker = "^TNX"  # Yahoo Finance ticker for 10-Year Treasury Yield
     data = yf.download(ticker, period="1d", interval="1d")
-    # Convert yield from percentage to decimal
-    risk_free_rate = (data['Close'] / 100).values[0].item()
+    risk_free_rate = (data['Close'] / 100).values[0].item() # Convert yield from percentage to decimal
     sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility
 
     print("Performance Metrics:")
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     engle_granger_test(df)
 
     # Backtest strategy
-    df = backtest_strategy(df, z_entry=1.7, z_exit=0.04) #2.5
+    df = backtest_strategy(df, z_entry=1.7, z_exit=0.04)
 
     # Calculate performance metrics
     calculate_performance_metrics(df)
